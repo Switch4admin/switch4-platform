@@ -35,7 +35,7 @@ const S4Chat = (() => {
    
    ⚠ Change this to the Render URL before uploading to Hostinger.
 ──────────────────────────────────────────────────────────────── */
-const BACKEND_URL = 'https://switch4-sia-api.onrender.com';
+const BACKEND_URL = '';   // Empty = use mock/demo mode for now
 
 const API = {
   chat:       `${BACKEND_URL}/api/chat`,
