@@ -324,20 +324,28 @@ async function handleInput(raw){
 /* ══════════════════════════════════════════════════════════════
    LLM CALL — via secure /api/chat backend (Sia)
 ══════════════════════════════════════════════════════════════ */
-async function callBackend(messages, mode, systemOverride){
-  const res = await fetch(API.chat, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      messages: messages.slice(-20),
-      mode: mode || 'general',
-      sessionId: S.sessionId || null,
-    }),
-    signal: AbortSignal.timeout(30000),
-  });
-  if (!res.ok) throw new Error(`Server ${res.status}`);
-  const data = await res.json();
-  return data.reply || '';
+/* DEMO MODE - Mock responses (no real backend needed) */
+async function callBackend(messages, mode) {
+  // Simulate thinking time
+  await new Promise(resolve => setTimeout(resolve, 900));
+
+  const lastMessage = messages[messages.length - 1]?.content.toLowerCase() || '';
+
+  if (lastMessage.includes("interview") || lastMessage.includes("mock") || lastMessage.includes("prep")) {
+    return "Great choice! Let's run a mock interview. What role or job title are you preparing for?";
+  }
+  if (lastMessage.includes("resume") || lastMessage.includes("upload")) {
+    return "Awesome! Please upload your resume (PDF/DOC) and I'll analyze it right away with feedback and job matches.";
+  }
+  if (lastMessage.includes("job") || lastMessage.includes("opening") || lastMessage.includes("role")) {
+    return "Here are some current openings that might interest you. Would you like me to show healthcare, tech, or finance roles?";
+  }
+  if (lastMessage.includes("salary") || lastMessage.includes("negot")) {
+    return "Salary negotiation is one of my specialties! Do you have an offer in hand, or are you preparing for final rounds?";
+  }
+
+  // Default friendly response
+  return "Hi! I'm Sia, Switch4's AI Recruitment Assistant. How can I help you today? You can ask me about jobs, interview prep, resume review, or schedule a call with a recruiter.";
 }
 
 async function askLLM(userText, mode='general', systemOverride=''){
