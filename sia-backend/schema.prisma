@@ -1,0 +1,339 @@
+generator client {
+  provider = "prisma-client-js"
+}
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ── INTERNAL USERS ────────────────────────────────────────────────
+model User {
+  id              String    @id @default(uuid())
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  email           String    @unique
+  passwordHash    String
+  firstName       String
+  lastName        String
+  role            UserRole  @default(RECRUITER)
+  isActive        Boolean   @default(true)
+  isEmailVerified Boolean   @default(false)
+  twoFaSecret     String?
+  twoFaEnabled    Boolean   @default(false)
+  twoFaVerified   Boolean   @default(false)
+  avatarUrl       String    @default("")
+  phone           String    @default("")
+  timezone        String    @default("America/New_York")
+  sessions        Session[]
+  auditLogs       AuditLog[]
+  assignedLeads   Lead[]            @relation("AssignedRecruiter")
+  assignedCands   InternalCandidate[] @relation("AssignedRecruiter")
+  notifications   Notification[]
+  reports         Report[]
+  @@index([email])
+  @@index([role])
+}
+
+enum UserRole {
+  ADMIN
+  RECRUITER
+  VIEWER
+}
+
+model Session {
+  id          String    @id @default(uuid())
+  createdAt   DateTime  @default(now())
+  expiresAt   DateTime
+  token       String    @unique
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ipAddress   String    @default("")
+  userAgent   String    @default("")
+  twoFaPassed Boolean   @default(false)
+  @@index([token])
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+// ── PUBLIC CHATBOT ─────────────────────────────────────────────────
+model Lead {
+  id              String     @id @default(uuid())
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+  firstName       String
+  lastName        String     @default("")
+  email           String
+  phone           String     @default("")
+  type            LeadType   @default(CANDIDATE)
+  source          LeadSource @default(CHATBOT)
+  roleInterest    String     @default("")
+  company         String     @default("")
+  notes           String     @default("") @db.Text
+  jobdivaId       String?
+  targetJobId     String     @default("")
+  targetJobTitle  String     @default("")
+  resumeId        String?
+  resume          Resume?    @relation(fields: [resumeId], references: [id])
+  assignedToId    String?
+  assignedTo      User?      @relation("AssignedRecruiter", fields: [assignedToId], references: [id])
+  status          LeadStatus @default(NEW)
+  followUpAt      DateTime?
+  convertedAt     DateTime?
+  @@index([email])
+  @@index([createdAt])
+  @@index([status])
+}
+
+enum LeadType {
+  CANDIDATE
+  EMPLOYER
+}
+
+enum LeadSource {
+  CHATBOT
+  CONTACT_FORM
+  RESUME_UPLOAD
+  DIRECT
+}
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  QUALIFIED
+  IN_PROGRESS
+  PLACED
+  CLOSED
+  LOST
+}
+
+model Resume {
+  id              String    @id @default(uuid())
+  createdAt       DateTime  @default(now())
+  originalName    String
+  mimeType        String
+  sizeBytes       Int       @default(0)
+  cloudinaryId    String    @default("")
+  cloudinaryUrl   String    @default("")
+  localPath       String    @default("")
+  extractedText   String    @default("") @db.Text
+  redactedText    String    @default("") @db.Text
+  piiMap          Json?
+  aiAnalysis      String    @default("") @db.Text
+  matchedJobs     Json?
+  leads           Lead[]
+  candidates      InternalCandidate[]
+  @@index([createdAt])
+}
+
+model Contact {
+  id          String    @id @default(uuid())
+  createdAt   DateTime  @default(now())
+  role        String    @default("unknown")
+  name        String
+  email       String
+  phone       String    @default("")
+  company     String    @default("")
+  service     String    @default("")
+  message     String    @db.Text
+  responded   Boolean   @default(false)
+  respondedAt DateTime?
+  notes       String    @default("") @db.Text
+  @@index([email])
+  @@index([createdAt])
+}
+
+model ScheduledCall {
+  id            String    @id @default(uuid())
+  createdAt     DateTime  @default(now())
+  name          String
+  email         String
+  phone         String    @default("")
+  slot          String
+  slotIso       DateTime?
+  timezone      String    @default("EST")
+  purpose       String    @default("Recruitment Call")
+  notes         String    @default("")
+  confirmed     Boolean   @default(true)
+  completed     Boolean   @default(false)
+  cancelledAt   DateTime?
+  @@index([email])
+}
+
+model ChatSession {
+  id            String    @id @default(uuid())
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  sessionId     String    @unique
+  mode          String    @default("general")
+  messageCount  Int       @default(0)
+  leadCaptured  Boolean   @default(false)
+  leadId        String?
+  @@index([sessionId])
+}
+
+// ── INTERNAL CRM ───────────────────────────────────────────────────
+model InternalCandidate {
+  id              String    @id @default(uuid())
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  firstName       String
+  lastName        String
+  email           String
+  phone           String    @default("")
+  location        String    @default("")
+  linkedInUrl     String    @default("")
+  currentTitle    String    @default("")
+  currentCompany  String    @default("")
+  yearsExp        Int       @default(0)
+  skills          String[]  @default([])
+  certifications  String[]  @default([])
+  targetRoles     String[]  @default([])
+  targetSalary    String    @default("")
+  workAuth        String    @default("")
+  availability    String    @default("")
+  doNotContact    Boolean   @default(false)
+  gdprConsent     Boolean   @default(false)
+  gdprConsentAt   DateTime?
+  hipaaAware      Boolean   @default(false)
+  resumeId        String?
+  resume          Resume?   @relation(fields: [resumeId], references: [id])
+  assignedToId    String?
+  assignedTo      User?     @relation("AssignedRecruiter", fields: [assignedToId], references: [id])
+  sourceLeadId    String?
+  jobdivaId       String?
+  pipelineStage   PipelineStage @default(NEW)
+  pipelineEntries PipelineEntry[]
+  interviews      Interview[]
+  notes           CandidateNote[]
+  activities      CandidateActivity[]
+  aiMatchScore    Float?
+  aiStrengths     String[]  @default([])
+  aiGaps          String[]  @default([])
+  aiSummary       String    @default("") @db.Text
+  @@index([email])
+  @@index([pipelineStage])
+  @@index([createdAt])
+  @@index([assignedToId])
+}
+
+enum PipelineStage {
+  NEW
+  SCREENING
+  SHORTLISTED
+  SUBMITTED
+  INTERVIEW_SCHEDULED
+  INTERVIEWING
+  OFFER_EXTENDED
+  OFFER_ACCEPTED
+  PLACED
+  REJECTED
+  ON_HOLD
+  WITHDRAWN
+}
+
+model PipelineEntry {
+  id            String    @id @default(uuid())
+  createdAt     DateTime  @default(now())
+  candidateId   String
+  candidate     InternalCandidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  stage         PipelineStage
+  notes         String    @default("") @db.Text
+  changedById   String?
+  jobId         String    @default("")
+  jobTitle      String    @default("")
+  clientName    String    @default("")
+  @@index([candidateId])
+  @@index([stage])
+}
+
+model Interview {
+  id            String    @id @default(uuid())
+  createdAt     DateTime  @default(now())
+  scheduledAt   DateTime
+  candidateId   String
+  candidate     InternalCandidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  type          String    @default("phone")
+  interviewer   String    @default("")
+  jobTitle      String    @default("")
+  clientName    String    @default("")
+  status        String    @default("scheduled")
+  feedback      String    @default("") @db.Text
+  rating        Int?
+  aiFeedback    String    @default("") @db.Text
+  @@index([candidateId])
+  @@index([scheduledAt])
+}
+
+model CandidateNote {
+  id            String    @id @default(uuid())
+  createdAt     DateTime  @default(now())
+  candidateId   String
+  candidate     InternalCandidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  content       String    @db.Text
+  authorId      String
+  authorName    String    @default("")
+  isPrivate     Boolean   @default(false)
+  @@index([candidateId])
+}
+
+model CandidateActivity {
+  id            String    @id @default(uuid())
+  createdAt     DateTime  @default(now())
+  candidateId   String
+  candidate     InternalCandidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  type          String
+  description   String    @db.Text
+  metadata      Json?
+  @@index([candidateId])
+  @@index([createdAt])
+}
+
+// ── COMPLIANCE & AUDIT ─────────────────────────────────────────────
+model AuditLog {
+  id          String    @id @default(uuid())
+  createdAt   DateTime  @default(now())
+  userId      String?
+  user        User?     @relation(fields: [userId], references: [id])
+  userEmail   String    @default("")
+  action      String
+  resource    String    @default("")
+  ipAddress   String    @default("")
+  userAgent   String    @default("")
+  metadata    Json?
+  @@index([userId])
+  @@index([createdAt])
+  @@index([action])
+}
+
+// ── NOTIFICATIONS ─────────────────────────────────────────────────
+model Notification {
+  id          String    @id @default(uuid())
+  createdAt   DateTime  @default(now())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type        String
+  title       String
+  message     String    @db.Text
+  link        String    @default("")
+  isRead      Boolean   @default(false)
+  readAt      DateTime?
+  sentEmail   Boolean   @default(false)
+  sentSms     Boolean   @default(false)
+  @@index([userId])
+  @@index([isRead])
+  @@index([createdAt])
+}
+
+// ── REPORTING ─────────────────────────────────────────────────────
+model Report {
+  id              String    @id @default(uuid())
+  createdAt       DateTime  @default(now())
+  name            String
+  type            String
+  params          Json?
+  result          Json?
+  generatedById   String
+  generatedBy     User      @relation(fields: [generatedById], references: [id])
+  @@index([type])
+  @@index([createdAt])
+}

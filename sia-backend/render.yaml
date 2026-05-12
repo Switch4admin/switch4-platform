@@ -1,0 +1,98 @@
+# render.yaml — Render.com deployment config (Switch4 Sia Platform v2)
+# Cost: $0/month on free tier (upgrades: Starter $7/mo for always-on)
+
+services:
+  - type: web
+    name: switch4-sia-api
+    runtime: node
+    plan: free
+    buildCommand: npm install && npm run db:generate && npm run db:migrate
+    startCommand: npm start
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3001
+      - key: ALLOWED_ORIGINS
+        value: https://www.switch4.co,https://switch4.co
+      - key: DATABASE_URL
+        fromDatabase:
+          name: switch4-sia-db
+          property: connectionString
+      # ── Set these manually in Render dashboard → Environment ──
+      - key: JWT_SECRET
+        sync: false   # REQUIRED — generate with: openssl rand -base64 48
+      - key: JWT_EXPIRY_HOURS
+        value: "8"
+      - key: SESSION_EXPIRY_DAYS
+        value: "7"
+      - key: OPENAI_API_KEY
+        sync: false   # REQUIRED
+      - key: OPENAI_MODEL
+        value: gpt-4o-mini
+      - key: OPENAI_MAX_TOKENS
+        value: "1200"
+      - key: GROQ_API_KEY
+        sync: false   # Optional fallback
+      - key: GROQ_MODEL
+        value: llama-3.3-70b-versatile
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+      - key: CLOUDINARY_UPLOAD_FOLDER
+        value: switch4-resumes
+      - key: SMTP_HOST
+        value: smtp.gmail.com
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_SECURE
+        value: "false"
+      - key: SMTP_USER
+        sync: false   # REQUIRED for emails
+      - key: SMTP_PASS
+        sync: false   # Gmail App Password
+      - key: RECRUITER_EMAIL
+        value: info@switch4.co
+      - key: FROM_EMAIL
+        value: noreply@switch4.co
+      - key: FROM_NAME
+        value: "Switch4 — Sia"
+      - key: OPENPHONE_API_KEY
+        sync: false   # Optional — for SMS/calling
+      - key: OPENPHONE_PHONE_ID
+        sync: false
+      - key: JOBDIVA_BASE_URL
+        value: https://www.jobdiva.com
+      - key: JOBDIVA_COMPANY_ID
+        sync: false   # Leave blank → uses demo data
+      - key: JOBDIVA_USERNAME
+        sync: false
+      - key: JOBDIVA_PASSWORD
+        sync: false
+      - key: RATE_LIMIT_WINDOW_MS
+        value: "900000"
+      - key: RATE_LIMIT_MAX
+        value: "150"
+      - key: CHAT_RATE_LIMIT_MAX
+        value: "40"
+      - key: AUTH_RATE_LIMIT_MAX
+        value: "10"
+      - key: CONTACT_RATE_LIMIT_MAX
+        value: "10"
+      - key: UPLOAD_RATE_LIMIT_MAX
+        value: "15"
+      - key: MAX_FILE_SIZE_MB
+        value: "5"
+      - key: INTERNAL_DASHBOARD_URL
+        value: https://www.switch4.co/internal
+
+databases:
+  - name: switch4-sia-db
+    plan: free
+    databaseName: switch4_sia
+    user: switch4
